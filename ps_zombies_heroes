@@ -1,0 +1,96 @@
+# -*- coding: utf-8 -*-
+"""
+HDZG Model: Heros, Consultants, Zombie/customer Eradication, Learning and Public Awareness
+The below script has been written with the purpose of modeling the rates at which Consultants, Active JS, Customers, Churn and Survival Probability
+change over the span of a PS zombie apocolypse. In this case we have accounted for Consultants learning to handle Jumpstarts, teach one another and the possibility of heroes. 
+These rates of change have been defined by the 5 ODEs given in the brief and defined in the function "f" below. 
+This script will also allow the inital values for each of these classes to be changed and therefore give the user the opportunity 
+to observe how changing these initial values will effect each class's outcome during the apocalypse. 
+This model is a slightly more complex model which consists of 5 classes: 
+Consultants(Living), Active JS(Possibility of Ressurection), Customers(Living-Dead), Human Survival Possibility and Churn(No Return) which are governed by the 5 ODEs
+    Consultants'=b*Hi-d*Hi-(1-hwi)*Hi*Zi #Formula for H'
+    Active'=d*Hi+(1-hwi)*Hi*Zi-res*Di-dec*Di #Formula for D'
+    Customers'=(res*Di)-(hwi*Hi*Zi)-(e*Hi*(Zi**0.5)) #Formula for Z'
+    Churn'=dec*Di+hwi*Hi*Zi+e*Hi*(Zi**0.5) #Formula for G'
+    Human Survival Probability=((l*hwi*((1-hwi)**0.5))*Hi*Zi)-(ldec*hwi)+(lteach*(1-hwi))  
+    
+This Script uses Scipy's ODEint function in order to solve the given equations with given initial values.
+The values on lines below can be edited in order to model a different beginning case(e.g. More or less powerful human heros)
+The perc function is used to get value per unit time. It reutrns the inputted value (intre) divided by the time inputted(time).
+In this case all values are given per annum or diem and there for time inputted is either 365.25(a year) or 1(a day)
+"""
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+import numpy as np
+
+#Function defined to convert given variables per diem
+
+def perc(intre, time):
+    return intre/time
+    
+#One year defined as 365.25 to account for leap years
+year=365.25
+
+#inital variables defined and converted to per diem via perc funtion.
+
+b=perc(0.04,year)#(birth)The percentage of Consultants that are hired each year.
+d=perc(0.02,year)#(death) The percentage of Consultants that are sacrificed to PS gods each year (Jumpstart assigned)
+res=perc(0.02,year)#(resurrection)The rate at which active Jumpstarts become Customers per year.
+dec=perc(0.01,year)#(decay)The rate at which the Customers or Jumpstarts go dark.
+l=0.03#(learning rate)The rate at which knowledge on fighting Customer Zombies is taught per year.
+e=0.0002#(hero)Percerntage of populace that become Jumpstart experts per year. Or new hire ramps
+ldec=0.01#(learning decrease)The rate at which knowledge in handling Jumpstarts is lost or forgotten per year.
+lteach=0.2*ldec#(teaching)The rate at which knowledge in handling Jumpstarts is taught accounting for knowledge lost yearly.
+
+#Defining function to implement given formula.
+def f(y, t):
+    #Creates an array 'y' to store ODEs
+    Hi=y[0]
+    Di=y[1]
+    Zi=y[2]
+    Gi=y[3]
+    hwi=y[4]
+    
+    #Defining given formula 
+    f0=b*Hi-d*Hi-(1-hwi)*Hi*Zi #Formula for Cons'
+    f1=d*Hi+(1-hwi)*Hi*Zi-res*Di-dec*Di #Formula for AJ'
+    f2=(res*Di)-(hwi*Hi*Zi)-(e*Hi*(Zi**0.5)) #Formula for Cus'
+    f3=dec*Di+hwi*Hi*Zi+e*Hi*(Zi**0.5) #Formula for Ch'
+    f4=((l*hwi*((1-hwi)**0.5))*Hi*Zi)-(ldec*hwi)+(lteach*(1-hwi)) #Formula for Hwi'
+    
+    #Returns each formula in an array 'y'
+    return[f0,f1,f2,f3,f4]    
+
+#Initial values for each class 
+D0=0#ActiveJS
+Z0=0.001#Customers
+H0=1-Z0#Consultants 
+G0=0#Churn
+hw0=0.1#Human Survival Rate   
+
+#Assigning inital values to y0 array
+y0=[H0,D0,Z0,G0,hw0]
+#Creating an array to define the time of simulation
+t = np.linspace(0,10000,1000)
+#Calls odeint function on array 'y'(defined in function f)
+#function is called over a range of time t(defined above)
+ans = odeint(f, y0, t)    
+#answers are saved to corrosponding array columns
+H = ans[:,0]
+D = ans[:,1]
+Z = ans[:,2]
+G = ans[:,3]
+hw = ans[:,4]
+
+#plotting results for all ODEs
+plt.figure()
+plt.plot(t, H, label='Consultants')
+plt.plot(t, Z, label='Customers')
+plt.plot(t, D, label='Active JS')
+plt.plot(t, G, label='Churn')
+plt.plot(t, hw, label='Hw')
+plt.xlabel('Time from Customer Outbreak')
+plt.ylabel('Pop')
+plt.title('Zombie Apocalypse')
+plt.legend(loc=0)
+plt.show()
